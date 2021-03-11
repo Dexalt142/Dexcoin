@@ -12,6 +12,8 @@
   "dependencies": {
     "chalk": "^4.1.0",
     "crypto-js": "^4.0.0",
-    "inquirer": "^7.3.3"
+    "elliptic": "^6.5.4",
+    "inquirer": "^7.3.3",
+    "lz-string": "^1.4.4"
   }
 }
