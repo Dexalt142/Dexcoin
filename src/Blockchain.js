@@ -10,7 +10,9 @@ class Blockchain {
             this.loadBlockchainFile();
         } catch (e) {
             this.blocks = [this.initializeBlockchain()];
-            this.unconfirmedTransactions = [];
+            this.unconfirmedTransactions = [new Transaction('0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000',
+                '045bfa30a15f7808194885ae5ea0f9dbde0b217c20f4a651c09aea192b1a5c537e92861ace98418780f33cd4c48cef261536b444a8c5d551370e8c3fe8edef64d0',
+                32)];
             this.difficulty = difficulty;
             this.miningReward = 32;
             this.saveBlockchainFile();
@@ -37,7 +39,10 @@ class Blockchain {
     }
 
     initializeBlockchain() {
-        return new Block("Dexcoin Genesis Block", "0");
+        let block = new Block([], "0");
+        block.hash = '0000000000000000000000000000000000000000000000000000000000000000';
+
+        return block;
     }
 
     getLatestBlock() {
@@ -52,6 +57,16 @@ class Blockchain {
         return this.getLatestBlock().height;
     }
 
+    getNumberOfTransactions() {
+        let transactions = 0;
+
+        for(const block of this.blocks) {
+            transactions += block.transactions.length;
+        }
+
+        return transactions;
+    }
+
     addTransaction(transaction) {
         if(!transaction.isValid()) {
             return false;
@@ -63,22 +78,63 @@ class Blockchain {
         return true;
     }
 
-    confirmTransaction(minerAddress) {
-        if(this.unconfirmedTransactions.length < 1) {
-            return false;
+    getCandidateBlock() {
+        if (this.unconfirmedTransactions.length < 1) {
+            return null;
         }
 
-        let newBlock = new Block(this.unconfirmedTransactions);
-        newBlock.height = this.getLatestHeight() + 1;
-        newBlock.prevHash = this.getLatestBlockHash();
+        let blockCandidate = new Block(this.unconfirmedTransactions);
+        blockCandidate.height = this.getLatestHeight() + 1;
+        blockCandidate.prevHash = this.getLatestBlockHash();
 
-        newBlock.mineBlock(this.difficulty);
-        this.blocks.push(newBlock);
+        return blockCandidate;
+    }
 
-        this.unconfirmedTransactions = [new Transaction(null, minerAddress, this.miningReward)];
-        this.saveBlockchainFile();
+    getMiningCandidate(candidate) {
+        return candidate.getDataHash();
+    }
 
-        return true;
+    addBlock(minerAddress, timestamp, nonce) {
+        let candidate = this.getCandidateBlock();
+
+        if(candidate) {
+            candidate.timestamp = timestamp;
+            candidate.nonce = nonce;
+            candidate.hash = candidate.generateHash();
+
+            let zeros = new Array(this.difficulty + 1).join('0');
+            if(candidate.hash.substring(0, this.difficulty) === zeros) {
+                this.blocks.push(candidate);
+
+                this.unconfirmedTransactions = [new Transaction('045bfa30a15f7808194885ae5ea0f9dbde0b217c20f4a651c09aea192b1a5c537e92861ace98418780f33cd4c48cef261536b444a8c5d551370e8c3fe8edef64d0', minerAddress, this.miningReward)];
+                this.saveBlockchainFile();
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    getBlock(hash) {
+        let block = null;
+
+        for(const b of this.blocks) {
+            if(b.hash === hash) {
+                block = b;
+                break;
+            }
+        }
+
+        return block;
+    }
+
+    getBlockAt(height) {
+        if(this.blocks[height]) {
+            return this.blocks[height];
+        }
+
+        return null;
     }
 
     getBalance(address) {
@@ -93,6 +149,18 @@ class Blockchain {
                 if(transaction.to === address) {
                     balance += transaction.amount;
                 }
+            }
+        }
+
+        return balance;
+    }
+
+    getNewBalance(address) {
+        let balance = this.getBalance(address);
+
+        for(const transaction of this.unconfirmedTransactions) {
+            if(transaction.from === address) {
+                balance -= transaction.amount;
             }
         }
 

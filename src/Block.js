@@ -11,17 +11,12 @@ class Block {
         this.nonce = "0x0";
     }
 
-    generateHash() {
-        return SHA256(`${this.height}${this.timestamp}${this.prevHash}${JSON.stringify(this.data)}${this.nonce}`).toString();
+    getDataHash() {
+        return SHA256(`${this.height}${this.prevHash}${JSON.stringify(this.data)}`).toString();
     }
 
-    mineBlock(difficulty) {
-        let zeros = new Array(difficulty + 1).join('0');
-        while(this.hash.substring(0, difficulty) !== zeros) {
-            this.nonce = `0x${(parseInt(this.nonce, 16) + 1).toString(16)}`;
-            this.timestamp = new Date().getTime();
-            this.hash = this.generateHash();
-        }
+    generateHash() {
+        return SHA256(`${this.getDataHash()}${this.timestamp}${this.nonce}`).toString();
     }
 
 }
